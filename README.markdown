@@ -1,5 +1,5 @@
 Diligence
-#########
+=========
 
 A proof of concept remote JavaScript console, like JsTestDriver(http://code.google.com/p/js-test-driver/).
 
@@ -9,9 +9,9 @@ You need to have [Node](http://tinyclouds.org/node/) installed.
 
 ## Running the server
 
-    node server.js
+    node diligence.js
     
-Then point your browsers to localhost:5678.
+Then point a browser to localhost:5678. I've only used Firefox.
 
 ## What is going on here
 
