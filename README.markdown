@@ -1,7 +1,7 @@
 Diligence
 =========
 
-A proof of concept remote JavaScript console, like JsTestDriver(http://code.google.com/p/js-test-driver/).
+A proof of concept remote JavaScript console, like [JsTestDriver](http://code.google.com/p/js-test-driver/).
 
 ## Prerequisites
 
