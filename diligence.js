@@ -45,6 +45,12 @@ var loadUtfFile = function(path, callback) {
 
 var result = function(req, res) {
   var status = getStatus(req);
+
+  if (req.uri.params['success'] == '1') {
+    puts('All tests passed.');
+  } else {
+    puts('There was a failure');
+  }
   res.sendHeader(200, []);
   res.finish();
 };
@@ -69,7 +75,7 @@ var boot = function(req, res) {
 
 new node.http.Server(function (req, res) {
   
-  puts(req.uri.path);
+  // puts(req.uri.path);
 
   if (req.uri.path == '/result') {
     return result(req, res);

@@ -11,7 +11,9 @@ You need to have [Node](http://tinyclouds.org/node/) installed.
 
     node diligence.js
     
-Then point a browser to localhost:5678. I've only used Firefox.
+Then point a browser to localhost:5678. I've only used Firefox so far.
+
+Look for 'All tests passed' in your console. Now go add a typo or something to tests.js. You should now see 'There was a failure'.
 
 ## What is going on here
 
