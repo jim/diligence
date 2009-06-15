@@ -1,11 +1,17 @@
 Diligence
 =========
 
-A proof of concept remote JavaScript console, like [JsTestDriver](http://code.google.com/p/js-test-driver/).
+A proof of concept automated JavaScript test runner, like [JsTestDriver](http://code.google.com/p/js-test-driver/). Only smaller and more hackable.
 
 ## Prerequisites
 
 You need to have [Node](http://tinyclouds.org/node/) installed.
+
+## How To Use Diligence
+
+* Write a script that concatonates your tests into tests/tests.js.
+* Modify the function in tests/collect.js to return an object structure that contains the results of your tests. Use whatever structure you want, but keep in mind it will be transferred to the server encoded in JSON (so you can only send data).
+* Modify the function process in tests/process.js to deal with the data you've sent back.
 
 ## Running the server
 
@@ -13,13 +19,16 @@ You need to have [Node](http://tinyclouds.org/node/) installed.
     
 Then point a browser to localhost:5678. I've only used Firefox so far.
 
-Look for 'All tests passed' in your console. Now go add a typo or something to tests.js. You should now see 'There was a failure'.
-
 ## What is going on here
 
-When a browser first makes a request, it is sent an HTML file with a little JavaScript code. Every second, the browser will then make a request to check for code to be run. If there is code, it is eval'ed and the response is sent as a request back to the server.
+When a browser first makes a request, it is sent an HTML file with a little JavaScript code. Every second, the browser will then make a request to check for code to be run. If there is code, it is run and the response is sent as a request back to the server.
+
+The sever only looks at the modified time on tests/tests.js, so changing tests/process.js or tests/collect.js will require a server restart.
 
 ## TODO
-* Design a JSON format to use to send code and results back and forth
 * Sandbox client-side eval
 * Add logging
+
+## Inspiration
+
+[JsTestDriver](http://code.google.com/p/js-test-driver/)
