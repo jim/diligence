@@ -82,13 +82,7 @@ function sendStaticFile(filename, res) {
 // actions
 
 function result(req, res) {
-  if (req.uri.params['success'] == '1') {
-    // puts(req.uri.params['payload']);
-    process(JSON.parse(req.uri.params['payload']));
-    puts('All tests passed.');
-  } else {
-    puts('There was a failure');
-  }
+  process(JSON.parse(req.uri.params['payload']));
   sendNothing(res);
 }
 

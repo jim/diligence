@@ -5,4 +5,5 @@ var result;
 var test = function() {
   result = 'Success';
 };
+
 test();
