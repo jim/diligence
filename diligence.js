@@ -4,7 +4,6 @@ var options = {
 
 var browsers = [];
 
-
 function debug(object) {
   if (options.debug) {
     if(typeof(object) == 'string') {
@@ -43,19 +42,48 @@ function getStatus(headers) {
 
 function loadUtfFile(path, callback) {
   node.fs.stat(path, function(status, stats) {
-      var size = stats['size'];
-      var file = new node.fs.File({encoding: 'utf8'});
-      file.open(path, "r+");
-      file.read(size, 0, function(data) {
-        callback(data);
-      });
+    var size = stats['size'];
+    var file = new node.fs.File({encoding: 'utf8'});
+    file.open(path, "r+");
+    file.read(size, 0, function(data) {
+      callback(data);
+    });
   });
 }
+
+// responses
+
+function sendNothing(res) {
+  res.sendHeader(200, []);
+  res.finish();
+}
+
+function sendFile(data, contentType, res) {
+  res.sendHeader(200, [["Content-Type", contentType]]);
+  res.sendBody(data);
+  res.finish();
+}
+
+function sendStaticFile(filename, res) {
+  puts("serving static file '" + filename + "'");
+  var extension = filename.match(/[a-z0-9]*\.(js|html)/)[1];
+  var contentType = extension == 'js' ? 'text/javascript' : 'text/html';
+  loadUtfFile('public/' + filename, function(data) {
+    sendFile(data, contentType, res);
+  });
+}
+
+
+
+
+
+
 
 // actions
 
 function result(req, res) {
   if (req.uri.params['success'] == '1') {
+    puts(req.uri.params['payload']);
     puts('All tests passed.');
   } else {
     puts('There was a failure');
@@ -65,14 +93,18 @@ function result(req, res) {
 
 function code(req, res) {
 
+  var testsPath = 'tests/tests.js';
+  var collectPath = 'tests/collect.js';
+
   function respond(codeUpdatedAt) {
     var status = getStatus(req);
     if (typeof(status.lastSeenAt) == 'undefined' || status.lastSeenAt < codeUpdatedAt) {
       debug("sending new code");
-      loadUtfFile('tests.js', function(data) {
-        res.sendHeader(200, [["Content-Type", "text/javascript"]]);
-        res.sendBody(data);
-        res.finish();
+      loadUtfFile(testsPath, function(testCode) {
+        loadUtfFile(collectPath, function(collectCode) {
+          var data = {test: testCode, collect: collectCode};
+          sendFile(JSON.stringify(data), 'text/javascript', res);
+        });
       });
     } else {
       sendNothing(res);
@@ -80,49 +112,40 @@ function code(req, res) {
     status.lastSeenAt = new Date().getTime();
   }; 
 
-  node.fs.stat('tests.js', function(status, stats) {
+  node.fs.stat(testsPath, function(status, stats) {
     respond(stats['mtime'].getTime());
   });
   
 }
 
-function sendNothing(res) {
-  res.sendHeader(200, []);
-  res.finish();
-}
 
-function sendStaticFile(filename, res) {
-    puts("serving static file '" + filename + "'");
-    var extension = filename.match(/[a-z0-9]*\.(js|html)/)[1];
-    var contentType = extension == 'js' ? 'text/javascript' : 'text/html';
-    loadUtfFile('public/' + filename, function(data) {
-      res.sendHeader(200, [["Content-Type", contentType]]);
-      res.sendBody(data);
-      res.finish();
-    });
-}
+
+
 
 // server
 
 function startServer() {
-    new node.http.Server(function (req, res) {
+  new node.http.Server(function (req, res) {
 
-      // puts(req.uri.path);
+    // puts(req.uri.path);
 
-      if (req.uri.path == '/result') {
-        return result(req, res);
-      } else if (req.uri.path == '/tick') {
-        return code(req, res);
-      } else if (match = req.uri.path.match(/^\/static\/(.*)/)){
-        return sendStaticFile(match[1], res);
-      } else {
-        return sendStaticFile('runner.html', res);
-      }
+    if (req.uri.path == '/result') {
+      return result(req, res);
+    } else if (req.uri.path == '/tick') {
+      return code(req, res);
+    } else if (match = req.uri.path.match(/^\/static\/(.*)/)){
+      return sendStaticFile(match[1], res);
+    } else {
+      return sendStaticFile('runner.html', res);
+    }
 
-    }).listen(5678);
+  }).listen(5678);
 
-    puts("diligence is running on port 5678.");
+  puts("diligence is running on port 5678.");
 }
 
 // boot
-startServer();
+
+function onLoad() {
+  startServer();
+}

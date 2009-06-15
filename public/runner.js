@@ -9,9 +9,9 @@ function run() {
            clearInterval(interval);
            var response = JSON.parse(json);
            try {
-               eval(response.code);
-               var result = eval(response.collect);
-               microAjax('/result?success=1', function(data) {
+               eval(response.test);
+               var result = encodeURIComponent(JSON.stringify(eval(response.collect)));
+               microAjax('/result?success=1&payload=' + result, function(data) {
                    go();
                });
            } catch(exception) {
