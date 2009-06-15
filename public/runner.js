@@ -5,7 +5,7 @@ function go() {
 
 function run() {
    microAjax('/tick', function(json){
-       if (response != '') {
+       if (json != '') {
            clearInterval(interval);
            var response = JSON.parse(json);
            try {

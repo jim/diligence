@@ -83,7 +83,8 @@ function sendStaticFile(filename, res) {
 
 function result(req, res) {
   if (req.uri.params['success'] == '1') {
-    puts(req.uri.params['payload']);
+    // puts(req.uri.params['payload']);
+    process(JSON.parse(req.uri.params['payload']));
     puts('All tests passed.');
   } else {
     puts('There was a failure');
@@ -146,6 +147,7 @@ function startServer() {
 
 // boot
 
+include('tests/process.js');
 function onLoad() {
   startServer();
 }
