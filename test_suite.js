@@ -3,7 +3,7 @@ include('diligence.js');
 function onLoad() {
     
   new diligence.Server(function(setup) {
-    setup.debug = true;
+    setup.debug = false;
     setup.port = 5678;
     setup.testPaths ='tests/tests.js';
     setup.collectPath ='tests/collect.js',
