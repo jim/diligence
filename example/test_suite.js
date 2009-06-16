@@ -1,14 +1,13 @@
-include('diligence.js');
+include('../diligence.js');
 
 function onLoad() {
     
   new diligence.Server(function(setup) {
-    setup.debug = false;
-    setup.port = 5678;
+    setup.publicPath = '../public';
     setup.testPaths ='tests/tests.js';
     setup.collectPath ='tests/collect.js',
     setup.process = function(req, results) {
-      puts('* You can customize the process function to handle the results of your tests');
+      puts('* You can customize the process function in your setup block to handle test results');
       for(var key in results) {
         puts(key + ': ' + results[key]);
       }

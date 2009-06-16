@@ -4,6 +4,7 @@ exports.diligence.Server = function(setupCallback) {
   var browsers = [], files = [];
   var config = {};
   setupCallback(config);
+  applyDefaults(config);
   
   start();
   
@@ -15,6 +16,22 @@ exports.diligence.Server = function(setupCallback) {
         for (var key in object) {
           puts(key + ": " + object[key]);
         }
+      }
+    }
+  }
+  
+  function applyDefaults(config) {
+    var defaults = {
+      debug: false,
+      publicPath: 'public',
+      port: 5678,
+      testPaths: [],
+      collectPath: ''
+    }
+    
+    for (var key in defaults) {
+      if (typeof(config[key]) == 'undefined') {
+        config[key] = defaults[key];
       }
     }
   }
@@ -75,6 +92,10 @@ exports.diligence.Server = function(setupCallback) {
   }
 
 
+  function publicPath(path) {
+    return config.publicPath + '/' + path;
+  }
+
   function loadUtfFile(path, callback) {
     node.fs.stat(path, function(status, stats) {
       var size = stats['size'];
@@ -100,10 +121,10 @@ exports.diligence.Server = function(setupCallback) {
   }
 
   function sendStaticFile(filename, res) {
-    puts("serving static file '" + filename + "'");
+    puts("serving static file '" + publicPath(filename) + "'");
     var extension = filename.match(/[a-z0-9]*\.(js|html)/)[1];
     var contentType = extension == 'js' ? 'text/javascript' : 'text/html';
-    loadUtfFile('public/' + filename, function(data) {
+    loadUtfFile(publicPath(filename), function(data) {
       sendFile(data, contentType, res);
     });
   }

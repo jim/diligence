@@ -4,7 +4,7 @@
 var result;
 
 var test = function() {
-  result = 'Success';
+  result = 'A Huge Success';
 };
 
 test();
