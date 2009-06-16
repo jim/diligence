@@ -37,7 +37,7 @@ exports.diligence.Server = function(setupCallback) {
   }
   
   function start() {
-    new node.http.Server(function (req, res) {
+    var server = new node.http.Server(function (req, res) {
 
       // puts(req.uri.path);
 
@@ -53,7 +53,9 @@ exports.diligence.Server = function(setupCallback) {
 
     }).listen(config['port']);
 
-    puts("diligence is running on port " + config['port'].toString() + ".");
+    if (server) {
+      puts("diligence is running on port " + config['port'].toString() + ".");
+    }
   }
 
 
