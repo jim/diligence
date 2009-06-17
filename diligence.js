@@ -34,6 +34,11 @@ exports.diligence.Server = function(setupCallback) {
         config[key] = defaults[key];
       }
     }
+    
+    if (typeof(config.runnerPath) == 'undefined') {
+      config.runnerPath = publicPath('runner.html');
+    }
+    
   }
   
   function start() {
@@ -156,13 +161,19 @@ exports.diligence.Server = function(setupCallback) {
     var browser = getBrowserState(req);
     browser.lastSeenAt = new Date().getTime();
     
-    var html = loadUtfFile(publicPath('runner.html'), function(data) {
+    var html = loadUtfFile(config.runnerPath, function(data) {
       var scripts = '';
       var paths = expandPaths(config.testPaths);
+
+      paths.unshift(publicPath('runner.js'));      
+      paths.unshift(publicPath('ajax.js'));
+      paths.unshift(publicPath('json2.js'));
+      
       for (var i=0,l=paths.length; i<l; i++) {
         scripts += '<script type="text/javascript" src="/files?path=' + encodeURIComponent(paths[i]) + '"></script>' + "\n"
       }
-      var page = data.replace('{{ scripts }}', scripts);
+      
+      var page = data.replace('</head>', scripts + '</head>');
       sendData(page, 'text/html', res);
     });
   }
