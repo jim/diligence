@@ -20,8 +20,12 @@ var diligence = (function() {
     });
   };
 
-  function respond(result) {
-    var payload = JSON.stringify(result);
+  function respond(testResults) {
+    var response = {
+      meta: {},
+      data: testResults
+    };
+    var payload = JSON.stringify(response);
     new ajax('/result', function(request) {
       wait();
     }, payload);

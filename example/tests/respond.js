@@ -1,0 +1,3 @@
+diligence.respond({
+  'test': result
+});

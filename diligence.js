@@ -8,7 +8,38 @@ exports.diligence.Server = function(setupCallback) {
   
   start();
   
-  var debug = function(object) {
+  function start() {
+    var server = new node.http.Server(function (req, res) {
+
+        debug('Processing request: ' + req.uri.path);
+
+        if (req.uri.path == '/result') {
+          req.setBodyEncoding('utf8');
+          var body = '';
+          req.onBody = function (chunk) {
+            body += chunk;
+          };
+          req.onBodyComplete = function() {
+            return result(body, req, res);
+          };
+        } else if (req.uri.path == '/tick') {
+          return tick(req, res);
+        } else if (match = req.uri.path.match(/^\/file/)){
+          return sendFile(req.uri.params.path, res);
+        } else if (match = req.uri.path.match(/^\/static\/(.*)/)){
+          return sendStaticFile(match[1], res);
+        } else {
+          return boot(req, res);
+        }
+
+      }).listen(config['port']);
+
+    if (server) {
+      puts("diligence is running on port " + config['port'].toString() + ".");
+    }
+  }
+  
+  function debug(object) {
     if (config.debug) {
       if(typeof(object) == 'string') {
         puts(object);
@@ -40,38 +71,6 @@ exports.diligence.Server = function(setupCallback) {
     }
     
   }
-  
-  function start() {
-    var server = new node.http.Server(function (req, res) {
-
-        puts(req.uri.path);
-
-        if (req.uri.path == '/result') {
-          req.setBodyEncoding('utf8');
-          var body = '';
-          req.onBody = function (chunk) {
-            body += chunk;
-          };
-          req.onBodyComplete = function() {
-            return result(body, req, res);
-          };
-        } else if (req.uri.path == '/tick') {
-          return tick(req, res);
-        } else if (match = req.uri.path.match(/^\/file/)){
-          return sendFile(req.uri.params.path, res);
-        } else if (match = req.uri.path.match(/^\/static\/(.*)/)){
-          return sendStaticFile(match[1], res);
-        } else {
-          return boot(req, res);
-        }
-
-      }).listen(config['port']);
-
-    if (server) {
-      puts("diligence is running on port " + config['port'].toString() + ".");
-    }
-  }
-
 
   function getUA(req) {
     var headers = req.headers;
@@ -80,6 +79,26 @@ exports.diligence.Server = function(setupCallback) {
         return headers[i][1];
       }
     }
+  }
+
+  function getBrowserName(req) {
+    var ua = getUA(req);
+    
+    try {
+      if (ua.match(/Chrome/)) {
+        return 'Chrome ' + ua.match(/Chrome\/([\d\.]+)/)[1];
+      } else if (ua.match(/Firefox/)) {
+        return 'Firefox ' + ua.match(/Firefox\/([\d\.]+)/)[1];
+      } else if (ua.match(/Safari/)) {
+        return 'Safari ' + ua.match(/Version\/([^ ]+) Safari\/528.17/)[1];      
+      } else if (ua.match(/Opera/)) {
+        return 'Opera ' + ua.match(/Opera\/([\d\.]+)/)[1];
+      }
+    } catch(e) {
+      
+    }
+    
+    return ua;
   }
 
   function getBrowserState(req) {
@@ -96,6 +115,7 @@ exports.diligence.Server = function(setupCallback) {
     return status;
   }
 
+  // path and file handling
   
   function expandPaths(paths) {
     if (typeof(paths) == 'string') { paths = [paths] }
@@ -141,7 +161,7 @@ exports.diligence.Server = function(setupCallback) {
   }
 
   function sendFile(path, res) {
-    puts("serving file '" + path + "'");
+    debug("serving file '" + path + "'");
     var extension = path.match(/.*(js|html)$/)[1];
     var contentType = extension == 'js' ? 'text/javascript' : 'text/html';
     loadUtfFile(path, function(data) {
@@ -152,7 +172,12 @@ exports.diligence.Server = function(setupCallback) {
   // actions
 
   function result(body, req, res) {
-    config.process(req, JSON.parse(body));
+    var result = JSON.parse(body);
+    var browser = {
+      userAgent: getUA(req),
+      name: getBrowserName(req)
+    };
+    config.process(browser, result.data);
     sendNothing(res);
   }
 
