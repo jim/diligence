@@ -8,13 +8,14 @@ var diligence = (function() {
 
   function tick() {  
     new ajax('/tick', function(request){
-      var json = request.responseText;
-      if (json != '') {
-        response = JSON.parse(json);
+      if (request.status == 200) {
+        response = JSON.parse(request.responseText);
         if (response.reload) {
           clearInterval(interval);
           document.location.reload();
         }
+      } else {
+        clearInterval(interval);
       }
     });
   };

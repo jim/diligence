@@ -9,11 +9,9 @@ var ajax = function(url, callbackFunction) {
 
        this.stateChange = function (object) {
                if (this.request.readyState==4) {
-                   if (req.status == 200) {
+                   // if (req.status == 200) {
                        this.callbackFunction(this.request);
-                   } else {
-                       clearInterval(interval);
-                   }
+                   // }
                }
        };
 
