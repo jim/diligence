@@ -1,29 +1,32 @@
-var interval;
-function go() {
-  interval = setInterval(run, 1000);
-};
+var diligence = (function() {
 
-function run() {
-  microAjax('/tick', function(json){
-    if (json != '') {
-      clearInterval(interval);
-      var response = JSON.parse(json);
-      try {
-        eval(response.test);
-      } catch(exception) {
-        var exception = {
-          message: exception.message
+  var interval;
+
+  function wait() {
+    interval = setInterval(tick, 1000);
+  }
+
+  function tick() {  
+    new ajax('/tick', function(request){
+      var json = request.responseText;
+      if (json != '') {
+        response = JSON.parse(json);
+        if (response.reload) {
+          clearInterval(interval);
+          document.location.reload();
         }
-      } finally {
-        var data = eval(response.collect);
-        if (exception) {
-          data.exception = exception;
-        }
-        var payload = encodeURIComponent(JSON.stringify(data));
-        microAjax('/result?payload=' + payload, function(data) {
-          go();
-        });
       }
-    }
-  });
-};
+    });
+  };
+
+  function respond(result) {
+    var payload = JSON.stringify(result);
+    new ajax('/result', function(request) {
+      wait();
+    }, payload);
+  }
+
+  return {
+    respond: respond
+  }
+})();

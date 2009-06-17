@@ -39,19 +39,28 @@ exports.diligence.Server = function(setupCallback) {
   function start() {
     var server = new node.http.Server(function (req, res) {
 
-      // puts(req.uri.path);
+        puts(req.uri.path);
 
-      if (req.uri.path == '/result') {
-        return result(req, res);
-      } else if (req.uri.path == '/tick') {
-        return code(req, res);
-      } else if (match = req.uri.path.match(/^\/static\/(.*)/)){
-        return sendStaticFile(match[1], res);
-      } else {
-        return sendStaticFile('runner.html', res);
-      }
+        if (req.uri.path == '/result') {
+          req.setBodyEncoding('utf8');
+          var body = '';
+          req.onBody = function (chunk) {
+            body += chunk;
+          };
+          req.onBodyComplete = function() {
+            return result(body, req, res);
+          };
+        } else if (req.uri.path == '/tick') {
+          return tick(req, res);
+        } else if (match = req.uri.path.match(/^\/file/)){
+          return sendFile(req.uri.params.path, res);
+        } else if (match = req.uri.path.match(/^\/static\/(.*)/)){
+          return sendStaticFile(match[1], res);
+        } else {
+          return boot(req, res);
+        }
 
-    }).listen(config['port']);
+      }).listen(config['port']);
 
     if (server) {
       puts("diligence is running on port " + config['port'].toString() + ".");
@@ -116,74 +125,71 @@ exports.diligence.Server = function(setupCallback) {
     res.finish();
   }
 
-  function sendFile(data, contentType, res) {
+  function sendData(data, contentType, res) {
     res.sendHeader(200, [["Content-Type", contentType]]);
     res.sendBody(data);
     res.finish();
   }
 
   function sendStaticFile(filename, res) {
-    puts("serving static file '" + publicPath(filename) + "'");
-    var extension = filename.match(/[a-z0-9]*\.(js|html)/)[1];
+    sendFile(publicPath(filename), res);
+  }
+
+  function sendFile(path, res) {
+    puts("serving file '" + path + "'");
+    var extension = path.match(/.*(js|html)$/)[1];
     var contentType = extension == 'js' ? 'text/javascript' : 'text/html';
-    loadUtfFile(publicPath(filename), function(data) {
-      sendFile(data, contentType, res);
+    loadUtfFile(path, function(data) {
+      sendData(data, contentType, res);
     });
   }
 
   // actions
 
-  function result(req, res) {
-    config.process(req, JSON.parse(req.uri.params['payload']));
+  function result(body, req, res) {
+    config.process(req, JSON.parse(body));
     sendNothing(res);
   }
 
-  function code(req, res) {
+  function boot(req, res) {
+    
+    var browser = getBrowserState(req);
+    browser.lastSeenAt = new Date().getTime();
+    
+    var html = loadUtfFile(publicPath('runner.html'), function(data) {
+      var scripts = '';
+      var paths = expandPaths(config.testPaths);
+      for (var i=0,l=paths.length; i<l; i++) {
+        scripts += '<script type="text/javascript" src="/files?path=' + encodeURIComponent(paths[i]) + '"></script>' + "\n"
+      }
+      var page = data.replace('{{ scripts }}', scripts);
+      sendData(page, 'text/html', res);
+    });
+  }
+
+  function tick(req, res) {
 
     var paths = expandPaths(config.testPaths);
-    var i = 0;
     var fileContent = '';
     var browser = getBrowserState(req);
+    var now = new Date().getTime();
     
     function checkModTime(index) {
-      node.fs.stat(paths[i], function(status, stats) {        
+      node.fs.stat(paths[index], function(status, stats) {
         if (typeof(browser.lastSeenAt) == 'undefined' || browser.lastSeenAt < stats['mtime'].getTime()) {
-          browser.lastSeenAt = new Date().getTime();
-          debug("sending new code");
-          i = 0; // reset loop so code loading starts at the top
-          loadFileAt(index);
+          browser.lastSeenAt = now;
+          sendData(JSON.stringify({reload: true}), 'text/javascript', res);
         } else {
           var nextIndex = index + 1;
           if (nextIndex < paths.length) {
             checkModTime(nextIndex);
           } else {
-            sendNothing(res);
+            sendData(JSON.stringify({reload: false}), 'text/javascript', res);
           }
         }
       });
     }
-    
-    function loadFileAt(index) {
-      loadUtfFile(paths[index], function(data) {
-        fileContent += data;
-        var nextIndex = index + 1;
-        if (nextIndex < paths.length) {
-          loadFileAt(nextIndex);
-        } else {
-          respond();
-        }
-      });
-    }
-    
-    function respond() {
-      loadUtfFile(config.collectPath, function(collectCode) {
-        var data = {test: fileContent, collect: collectCode};
-        sendFile(JSON.stringify(data), 'text/javascript', res);
-      });
-    }
-    
     checkModTime(0);
-
   }
   
 };
