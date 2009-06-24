@@ -90,7 +90,7 @@ exports.diligence.Server = function(setupCallback) {
       } else if (ua.match(/Firefox/)) {
         return 'Firefox ' + ua.match(/Firefox\/([\d\.]+)/)[1];
       } else if (ua.match(/Safari/)) {
-        return 'Safari ' + ua.match(/Version\/([^ ]+) Safari\/528.17/)[1];      
+        return 'Safari ' + ua.match(/Version\/([^ ]+) Safari\/[\d\.]+/)[1];      
       } else if (ua.match(/Opera/)) {
         return 'Opera ' + ua.match(/Opera\/([\d\.]+)/)[1];
       }
@@ -140,6 +140,7 @@ exports.diligence.Server = function(setupCallback) {
       file.read(size, 0, function(data) {
         callback(data);
       });
+      file.close();
     });
   }
 
