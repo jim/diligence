@@ -64,6 +64,8 @@ Where 'test_suite.js' is the name of your configuration file. Then point a brows
 
 Diligence works in Safari, Firefox, and Chrome. Opera has a problem with the ajax code, which probably needs to be replaced anyhow. IE support coming next.
 
+NOTE: Autorefresh is broken in Firefox 3.5. I'll be replacing the Ajax code soon, and will address this issue at that time.
+
 ## What is going on here
 
 When a browser first makes a request, it is sent an HTML file with a little JavaScript code. Every second, the browser will then make a request to check for code to be run. If there is code, it is run and the response is sent as a request back to the server.
