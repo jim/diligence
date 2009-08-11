@@ -51,9 +51,10 @@ exports.diligence.Server = function(setupCallback) {
         return sendStaticFile('runner.html', res);
       }
 
-    }).listen(config['port']);
+    });
 
     if (server) {
+      server.listen(config['port']);
       puts("diligence is running on port " + config['port'].toString() + ".");
     }
   }
