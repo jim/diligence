@@ -1,6 +1,9 @@
-exports.diligence = {};
+var http = require('http');
+var sys = require('sys');
+var url = require('url');
+var fs = require('fs');
 
-exports.diligence.Server = function(setupCallback) {
+exports.createServer = function(setupCallback) {
   var browsers = [], files = [];
   var config = {};
   setupCallback(config);
@@ -9,12 +12,14 @@ exports.diligence.Server = function(setupCallback) {
   start();
   
   function start() {
-    var server = new node.http.Server(function (req, res) {
+    var server = http.createServer(function (req, res) {
 
-        debug('Processing request: ' + req.uri.path);
+        parsed = url.parse(req.url, true);
 
-        if (req.uri.path == '/result') {
-          req.setBodyEncoding('utf8');
+        debug('Processing request: ' + parsed.href);
+
+        if (parsed.pathname == '/result') {
+          req.setEncoding('utf8');
           var body = '';
           req.onBody = function (chunk) {
             body += chunk;
@@ -22,11 +27,11 @@ exports.diligence.Server = function(setupCallback) {
           req.onBodyComplete = function() {
             return result(body, req, res);
           };
-        } else if (req.uri.path == '/tick') {
+        } else if (parsed.pathname == '/tick') {
           return tick(req, res);
-        } else if (match = req.uri.path.match(/^\/file/)){
-          return sendFile(req.uri.params.path, res);
-        } else if (match = req.uri.path.match(/^\/static\/(.*)/)){
+        } else if (match = parsed.pathname.match(/^\/file/)){
+          return sendFile(parsed.query.path, res);
+        } else if (match = parsed.pathname.match(/^\/static\/(.*)/)){
           return sendStaticFile(match[1], res);
         } else {
           return boot(req, res);
@@ -36,17 +41,17 @@ exports.diligence.Server = function(setupCallback) {
 
     if (server) {
       server.listen(config['port']);
-      puts("diligence is running on port " + config['port'].toString() + ".");
+      sys.puts("diligence is running on port " + config['port'].toString() + ".");
     }
   }
   
   function debug(object) {
     if (config.debug) {
       if(typeof(object) == 'string') {
-        puts(object);
+        sys.puts(object);
       } else {
         for (var key in object) {
-          puts(key + ": " + object[key]);
+          sys.debug(key + ": " + object[key]);
         }
       }
     }
@@ -96,7 +101,7 @@ exports.diligence.Server = function(setupCallback) {
         return 'Opera ' + ua.match(/Opera\/([\d\.]+)/)[1];
       }
     } catch(e) {
-      
+      return "Unknown Browser: '" + ua + "'";
     }
     
     return ua;
@@ -134,28 +139,22 @@ exports.diligence.Server = function(setupCallback) {
   }
 
   function loadUtfFile(path, callback) {
-    node.fs.stat(path, function(status, stats) {
-      var size = stats['size'];
-      var file = new node.fs.File({encoding: 'utf8'});
-      file.open(path, "r+");
-      file.read(size, 0, function(data) {
-        callback(data);
-      });
-      file.close();
+    fs.readFile(path, 'utf8', function(error, data) {
+      callback(data);
     });
   }
 
   // responses
 
   function sendNothing(res) {
-    res.sendHeader(200, []);
+    res.writeHead(200, []);
     res.finish();
   }
 
   function sendData(data, contentType, res) {
-    res.sendHeader(200, [["Content-Type", contentType]]);
-    res.sendBody(data);
-    res.finish();
+    res.writeHead(200, [["Content-Type", contentType]]);
+    res.write(data);
+    res.end();
   }
 
   function sendStaticFile(filename, res) {
@@ -213,7 +212,7 @@ exports.diligence.Server = function(setupCallback) {
     var now = new Date().getTime();
     
     function checkModTime(index) {
-      node.fs.stat(paths[index], function(status, stats) {
+      fs.stat(paths[index], function(status, stats) {
         if (typeof(browser.lastSeenAt) == 'undefined' || browser.lastSeenAt < stats['mtime'].getTime()) {
           browser.lastSeenAt = now;
           sendData(JSON.stringify({reload: true}), 'text/javascript', res);
