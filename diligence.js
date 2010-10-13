@@ -1,7 +1,8 @@
-var http = require('http');
+var express = require('express');
 var sys = require('sys');
 var url = require('url');
 var fs = require('fs');
+var path = require('path');
 
 exports.createServer = function(setupCallback) {
   var browsers = [], files = [];
@@ -12,35 +13,78 @@ exports.createServer = function(setupCallback) {
   start();
   
   function start() {
-    var server = http.createServer(function (req, res) {
+    var app = express.createServer();
+    
+    app.use(express.bodyDecoder());
+    
+    app.get('/', function(request, response) {
+      var browser = getBrowserState(request);
+      browser.lastSeenAt = new Date().getTime();
+    
+      var html = loadUtfFile(path.join(config.root, config.runnerPath), function(data) {
+        var scripts = '';
+        var paths = expandPaths(config.testPaths);
 
-        parsed = url.parse(req.url, true);
-
-        debug('Processing request: ' + parsed.href);
-
-        if (parsed.pathname == '/result') {
-          req.setEncoding('utf8');
-          var body = '';
-          req.onBody = function (chunk) {
-            body += chunk;
-          };
-          req.onBodyComplete = function() {
-            return result(body, req, res);
-          };
-        } else if (parsed.pathname == '/tick') {
-          return tick(req, res);
-        } else if (match = parsed.pathname.match(/^\/file/)){
-          return sendFile(parsed.query.path, res);
-        } else if (match = parsed.pathname.match(/^\/static\/(.*)/)){
-          return sendStaticFile(match[1], res);
-        } else {
-          return boot(req, res);
+        paths.unshift(publicPath('runner.js'));      
+        paths.unshift(publicPath('ajax.js'));
+        paths.unshift(publicPath('json2.js'));
+      
+        for (var i=0,l=paths.length; i<l; i++) {
+          scripts += '<script type="text/javascript" src="/files?path=' + encodeURIComponent(paths[i]) + '"></script>' + "\n"
         }
-
+      
+        var page = data.replace('</head>', scripts + '</head>');
+        response.send(page)
       });
+    });
+    
+    app.post('/result', function(request, response) {
+      var browser = {
+        userAgent: request.header('User-Agent'),
+        name: getBrowserName(request)
+      };
+      config.process(browser, request.body.data);
+      response.send();
+    });
+    
+    app.get('/tick', function(request, response) {
+      var paths = expandPaths(config.testPaths);
+      var browser = getBrowserState(request);
+      var now = new Date().getTime();
+  
+      function checkModTime(index) {
+        fs.stat(path.join(config.root, paths[index]), function(error, stats) {
+          if (!stats) {
+            debug('failed to get stats for ' + paths[index]);
+            return;
+          }
+          if (typeof(browser.lastSeenAt) == 'undefined' || browser.lastSeenAt < stats.mtime.getTime()) {
+            browser.lastSeenAt = now;
+            response.send({reload: true});
+          } else {
+            var nextIndex = index + 1;
+            if (nextIndex < paths.length) {
+              checkModTime(nextIndex);
+            } else {
+              response.send({reload: false});
+            }
+          }
+        });
+      }
+      checkModTime(0);
+    });
+    
+    app.get('/files', function(request, response) {
+      debug("Serving file: " + request.param('path'));
+      response.sendfile(path.join(config.root, request.param('path')));
+    });
+    
+    app.get('/static/:file', function(request, response) {
+      response.sendfile(publicPath(request.params.file));
+    });
 
-    if (server) {
-      server.listen(config['port']);
+    if (app) {
+      app.listen(config['port']);
       sys.puts("diligence is running on port " + config['port'].toString() + ".");
     }
   }
@@ -78,18 +122,9 @@ exports.createServer = function(setupCallback) {
     
   }
 
-  function getUA(req) {
-    var headers = req.headers;
-    for (var i=0,l=headers.length; i<l; i++) {
-      if (headers[i][0] == 'User-Agent') {
-        return headers[i][1];
-      }
-    }
-  }
-
   function getBrowserName(req) {
-    var ua = getUA(req);
-    
+    var ua = req.header('User-Agent');
+      
     try {
       if (ua.match(/Chrome/)) {
         return 'Chrome ' + ua.match(/Chrome\/([\d\.]+)/)[1];
@@ -103,12 +138,10 @@ exports.createServer = function(setupCallback) {
     } catch(e) {
       return "Unknown Browser: '" + ua + "'";
     }
-    
-    return ua;
   }
 
   function getBrowserState(req) {
-    var ua = getUA(req);
+    var ua = req.header('User-Agent');
     for (var i=0,l=browsers.length; i<l; i++) {
       if (browsers[i][0] == ua) {
         debug('found ' + ua);
@@ -133,7 +166,6 @@ exports.createServer = function(setupCallback) {
     return pathList;
   }
 
-
   function publicPath(path) {
     return config.publicPath + '/' + path;
   }
@@ -142,91 +174,6 @@ exports.createServer = function(setupCallback) {
     fs.readFile(path, 'utf8', function(error, data) {
       callback(data);
     });
-  }
-
-  // responses
-
-  function sendNothing(res) {
-    res.writeHead(200, []);
-    res.finish();
-  }
-
-  function sendData(data, contentType, res) {
-    res.writeHead(200, [["Content-Type", contentType]]);
-    res.write(data);
-    res.end();
-  }
-
-  function sendStaticFile(filename, res) {
-    sendFile(publicPath(filename), res);
-  }
-
-  function sendFile(path, res) {
-    debug("serving file '" + path + "'");
-    var extension = path.match(/.*(js|html)$/)[1];
-    var contentType = extension == 'js' ? 'text/javascript' : 'text/html';
-    loadUtfFile(path, function(data) {
-      sendData(data, contentType, res);
-    });
-  }
-
-  // actions
-
-  function result(body, req, res) {
-    var result = JSON.parse(body);
-    var browser = {
-      userAgent: getUA(req),
-      name: getBrowserName(req)
-    };
-    config.process(browser, result.data);
-    sendNothing(res);
-  }
-
-  function boot(req, res) {
-    
-    var browser = getBrowserState(req);
-    browser.lastSeenAt = new Date().getTime();
-    
-    var html = loadUtfFile(config.runnerPath, function(data) {
-      var scripts = '';
-      var paths = expandPaths(config.testPaths);
-
-      paths.unshift(publicPath('runner.js'));      
-      paths.unshift(publicPath('ajax.js'));
-      paths.unshift(publicPath('json2.js'));
-      
-      for (var i=0,l=paths.length; i<l; i++) {
-        scripts += '<script type="text/javascript" src="/files?path=' + encodeURIComponent(paths[i]) + '"></script>' + "\n"
-      }
-      
-      var page = data.replace('</head>', scripts + '</head>');
-      sendData(page, 'text/html', res);
-    });
-  }
-
-  function tick(req, res) {
-
-    var paths = expandPaths(config.testPaths);
-    var fileContent = '';
-    var browser = getBrowserState(req);
-    var now = new Date().getTime();
-    
-    function checkModTime(index) {
-      fs.stat(paths[index], function(status, stats) {
-        if (typeof(browser.lastSeenAt) == 'undefined' || browser.lastSeenAt < stats['mtime'].getTime()) {
-          browser.lastSeenAt = now;
-          sendData(JSON.stringify({reload: true}), 'text/javascript', res);
-        } else {
-          var nextIndex = index + 1;
-          if (nextIndex < paths.length) {
-            checkModTime(nextIndex);
-          } else {
-            sendData(JSON.stringify({reload: false}), 'text/javascript', res);
-          }
-        }
-      });
-    }
-    checkModTime(0);
   }
   
 };

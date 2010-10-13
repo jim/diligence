@@ -36,7 +36,7 @@ var ajax = function(url, callbackFunction) {
                if (this.postBody!=="") {
                        req.open("POST", url, true);
                        req.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                       req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+                       req.setRequestHeader('Content-type', 'application/json');
                        req.setRequestHeader('Connection', 'close');
                } else {
                        req.open("GET", url, true);
