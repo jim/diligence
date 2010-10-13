@@ -37,7 +37,7 @@ var ajax = function(url, callbackFunction) {
                        req.open("POST", url, true);
                        req.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                        req.setRequestHeader('Content-type', 'application/json');
-                       req.setRequestHeader('Connection', 'close');
+                       // req.setRequestHeader('Connection', 'close');
                } else {
                        req.open("GET", url, true);
                }

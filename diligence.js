@@ -44,14 +44,14 @@ exports.createServer = function(setupCallback) {
         name: getBrowserName(request)
       };
       config.process(browser, request.body.data);
-      response.send();
+      response.send(200);
     });
     
     app.get('/tick', function(request, response) {
       var paths = expandPaths(config.testPaths);
       var browser = getBrowserState(request);
       var now = new Date().getTime();
-  
+      
       function checkModTime(index) {
         fs.stat(path.join(config.root, paths[index]), function(error, stats) {
           if (!stats) {

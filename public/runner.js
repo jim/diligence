@@ -6,7 +6,7 @@ var diligence = (function() {
     interval = setInterval(tick, 1000);
   }
 
-  function tick() {  
+  function tick() {
     new ajax('/tick', function(request){
       if (request.status == 200) {
         response = JSON.parse(request.responseText);
